@@ -50,6 +50,7 @@ require 'fastimage/fbr.rb'
 require 'delegate'
 require 'pathname'
 require 'zlib'
+require 'socksify/http' # patch: for using Net::HTTP.SOCKSProxy
 
 class FastImage
   attr_reader :size, :type, :content_length
@@ -281,7 +282,15 @@ class FastImage
     proxy = proxy_uri
 
     if proxy
-      @http = Net::HTTP::Proxy(proxy.host, proxy.port).new(@parsed_uri.host, @parsed_uri.inferred_port)
+      # patch: analyze proxy scheme and use correct proxy
+      case
+      when proxy.scheme == 'socks5'
+        @http = Net::HTTP.SOCKSProxy(proxy.host, proxy.port).new(@parsed_uri.host, @parsed_uri.inferred_port)
+      else
+        @http = Net::HTTP::Proxy(proxy.host, proxy.port).new(@parsed_uri.host, @parsed_uri.inferred_port)
+      end
+
+      #@http = Net::HTTP::Proxy(proxy.host, proxy.port).new(@parsed_uri.host, @parsed_uri.inferred_port)
     else
       @http = Net::HTTP.new(@parsed_uri.host, @parsed_uri.inferred_port)
     end
